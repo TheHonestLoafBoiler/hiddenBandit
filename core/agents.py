@@ -140,9 +140,11 @@ class GRPOAgent:
         advantages = self.grpo.compute_advantages(rollout_data["total_rewards"])
 
         # Recompute log probs through the current (updated) policy graph
+        # MUST use list + stack (not pre-allocated tensor assignment) to
+        # preserve the autograd graph back to policy parameters.
         actions = rollout_data["actions"]                    # (G, T)
         G, T = actions.shape
-        current_log_probs = torch.zeros(G, T)
+        log_prob_list = []
 
         for t in range(T):
             if t == 0:
@@ -151,7 +153,9 @@ class GRPOAgent:
                 logits = self.policy(actions[:, :t])
 
             dist = torch.distributions.Categorical(logits=logits)
-            current_log_probs[:, t] = dist.log_prob(actions[:, t])
+            log_prob_list.append(dist.log_prob(actions[:, t]))
+
+        current_log_probs = torch.stack(log_prob_list, dim=1)  # (G, T)
 
         # GRPO loss
         loss = self.grpo.compute_loss(
@@ -164,6 +168,14 @@ class GRPOAgent:
         # Backward pass
         self.optimizer.zero_grad()
         loss.backward()
+
+        # Gradient norm — confirms gradients are flowing
+        grad_norm = sum(
+            p.grad.norm().item() ** 2
+            for p in self.policy.parameters()
+            if p.grad is not None
+        ) ** 0.5
+
         self.optimizer.step()
 
         # Periodically sync reference policy
@@ -175,6 +187,7 @@ class GRPOAgent:
             "loss": loss.item(),
             "mean_advantage": advantages.mean().item(),
             "mean_reward": rollout_data["total_rewards"].mean().item(),
+            "grad_norm": grad_norm,
         }
 
     def select_arm(self, history: torch.Tensor) -> torch.Tensor:

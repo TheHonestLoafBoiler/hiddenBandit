@@ -41,6 +41,7 @@ class TrainingLogger:
             "loss": metrics["loss"],
             "mean_advantage": metrics["mean_advantage"],
             "mean_reward": metrics["mean_reward"],
+            "grad_norm": metrics.get("grad_norm", 0.0),
             "max_reward": rollout["total_rewards"].max().item(),
             "min_reward": rollout["total_rewards"].min().item(),
         }
@@ -50,20 +51,27 @@ class TrainingLogger:
         self,
         step: int,
         metrics: dict,
-        sequence_discovered: bool,
-        discovery_step: Optional[int],
+        seq_hits: int,
+        log_interval: int = 100,
     ):
-        """Print human-readable summary to stdout."""
-        discovery_info = ""
-        if sequence_discovered:
-            discovery_info = f"  | seq found @ step {discovery_step}"
+        """Print human-readable summary to stdout.
+
+        Computes interval-level stats from the last `log_interval` buffered rows.
+        """
+        interval = self._metrics_buffer[-log_interval:]
+        interval_max_R = max(row["max_reward"] for row in interval)
+        interval_mean_R = sum(row["mean_reward"] for row in interval) / len(interval)
+        interval_mean_grad = sum(row["grad_norm"] for row in interval) / len(interval)
+
+        hit_info = f"  | seq_hits={seq_hits}"
 
         print(
             f"[step {step:>6d}]  "
-            f"loss={metrics['loss']:>8.4f}  "
-            f"mean_R={metrics['mean_reward']:>8.2f}  "
-            f"mean_A={metrics['mean_advantage']:>+.4f}"
-            f"{discovery_info}"
+            f"loss={metrics['loss']:>10.6f}  "
+            f"mean_R={interval_mean_R:>8.2f}  "
+            f"grad={interval_mean_grad:>8.4f}  "
+            f"max_R={interval_max_R:>8.1f}"
+            f"{hit_info}"
         )
 
     def finalize(self, summary: dict):

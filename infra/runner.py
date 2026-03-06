@@ -54,6 +54,8 @@ class ExperimentRunner:
         best_mean_reward = float("-inf")
         sequence_discovered = False
         discovery_step = None
+        seq_hits_since_last_print = 0
+        total_seq_hits = 0
 
         for step in range(1, self.config.n_steps + 1):
 
@@ -68,8 +70,10 @@ class ExperimentRunner:
             metrics = self.agent.train_step(rollout)
 
             # 3. Track sequence discovery
-            max_reward = rollout["total_rewards"].max().item()
-            if max_reward >= self.bandit.bonus and not sequence_discovered:
+            hits_this_step = (rollout["total_rewards"] >= self.bandit.bonus).sum().item()
+            seq_hits_since_last_print += hits_this_step
+            total_seq_hits += hits_this_step
+            if hits_this_step > 0 and not sequence_discovered:
                 sequence_discovered = True
                 discovery_step = step
 
@@ -81,7 +85,11 @@ class ExperimentRunner:
             self.logger.log_step(step, metrics, rollout)
 
             if step % self.config.log_interval == 0:
-                self.logger.print_summary(step, metrics, sequence_discovered, discovery_step)
+                self.logger.print_summary(
+                    step, metrics, seq_hits_since_last_print,
+                    log_interval=self.config.log_interval,
+                )
+                seq_hits_since_last_print = 0
 
             # 6. Checkpoint
             if step % self.config.checkpoint_interval == 0:
@@ -97,7 +105,8 @@ class ExperimentRunner:
             "best_mean_reward": best_mean_reward,
             "total_steps": self.config.n_steps,
             "sequence_discovered": sequence_discovered,
-            "discovery_step": discovery_step,
+            "first_discovery_step": discovery_step,
+            "total_sequence_hits": total_seq_hits,
         }
 
         self.logger.finalize(summary)
