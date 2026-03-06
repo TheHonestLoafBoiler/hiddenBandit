@@ -1,0 +1,101 @@
+{
+  "project_name": "Hidden Bandit (hb)",
+  "description": "A 10-arm bandit with a hidden sequence bonus, trained via GRPO with swappable neural network policies.",
+  "created": "2026-03-06",
+  "last_updated": "2026-03-06",
+
+  "problem_definition": {
+    "type": "sequence-dependent bandit (state-dependent / POMDP bandit)",
+    "n_arms": 10,
+    "arm_1_reward": 0.5,
+    "arms_2_to_9_reward": 0.0,
+    "arm_10_reward_default": 0.0,
+    "arm_10_reward_sequence_triggered": 100.0,
+    "secret_sequence_example": [3, 7, 2, 10],
+    "sequence_length_k": "configurable",
+    "well_posedness": "Reward function R(a_t, h_t) is deterministic given action and recent history. The hidden state is progress along the secret sequence (partial-match pointer in {0..k}). Formally a POMDP bandit. Standard bandit algorithms will converge to arm 1 (0.5/round). Optimal policy earns 100/k per round amortized.",
+    "greedy_baseline_reward_per_round": 0.5,
+    "optimal_reward_per_round_formula": "100 / k"
+  },
+
+  "architecture_decisions": {
+    "framework": "PyTorch (tensors everywhere — arms, rewards, histories, Q-values, all torch.Tensor)",
+    "config_validation": "Pydantic",
+    "rl_algorithm": "GRPO (Group Relative Policy Optimization)",
+    "grpo_details": {
+      "level": "trajectory-level (NOT action-level)",
+      "procedure": [
+        "1. Sample G complete trajectories from current policy",
+        "2. Score each trajectory by cumulative reward R_i = sum(r_t)",
+        "3. Compute group-relative advantages: A_i = (R_i - mean) / (std + eps)",
+        "4. All actions in trajectory i share advantage A_i",
+        "5. Update policy via clipped surrogate loss + KL penalty to reference policy"
+      ],
+      "key_insight": "No critic network. Trajectory that discovers the sequence gets massive relative advantage, reinforcing the ENTIRE action pattern."
+    },
+    "policy_networks": {
+      "gru": {
+        "description": "GRU over action history embeddings. Hidden state tracks sequence progress.",
+        "params": "~3K (d=16, h=32)",
+        "recommended_for": "default — right level of power for this problem"
+      },
+      "lstm": {
+        "description": "LSTM over action history embeddings. Separate cell state may help with long sequences.",
+        "params": "~4K (d=16, h=32)",
+        "recommended_for": "longer secret sequences where GRU may forget"
+      },
+      "transformer": {
+        "description": "Self-attention over action history. The Transformer Bandit. Very funny.",
+        "params": "~6K (d=16, nhead=2, layers=1)",
+        "recommended_for": "fun, ablation studies, flex"
+      }
+    },
+    "separation_principle": "core/ contains ONLY math (PyTorch tensors in, tensors out). Zero config parsing, CLI, file I/O, logging. infra/ bridges config to core via factory.py. cli/ is a thin shell over infra."
+  },
+
+  "features": {
+    "switching_functions": {
+      "status": "planned",
+      "types": [
+        "switching-cost bandit: cost function sigma(a_prev, a_curr) penalizes arm changes",
+        "switching policy: meta-function deciding when to swap between sub-policies"
+      ]
+    },
+    "importance_sampling_replicas": {
+      "status": "planned",
+      "description": "Multiple replicas at different exploration levels. High-exploration replicas discover sequence, IS reweights experience for exploitative replicas.",
+      "future_enhancement": "Replica-augmented GRPO: pool all replicas' trajectories into one GRPO group."
+    }
+  },
+
+  "project_structure": {
+    "core/": "Pure math. bandit.py, policy_network.py, grpo.py, agents.py, switching.py, replica_exchange.py, rewards.py",
+    "config/": "Pydantic schemas, JSON defaults, config loader",
+    "infra/": "Experiment runner, logger, checkpointing, factory (the ONE bridge between config and core)",
+    "cli/": "Thin CLI dispatch. Entry point: hb.py train -c <config.json>",
+    "tests/": "Core-first testing, then critical infra paths"
+  },
+
+  "cli_interface": {
+    "entry_point": "hb.py",
+    "initial_verbs": ["train"],
+    "usage": "hb.py train -c <config_path>",
+    "planned_verbs": ["analyze", "compare"]
+  },
+
+  "implementation_log": [
+    {
+      "date": "2026-03-06",
+      "action": "Initial project setup and full codebase scaffolding",
+      "details": "Created core/, config/, infra/, cli/, tests/. Implemented GRU, LSTM, Transformer policy networks. GRPO trainer. SequenceBandit environment. Pydantic configs. CLI entry point."
+    }
+  ],
+
+  "open_questions": [
+    "Trajectory length T per episode — configurable, needs tuning relative to sequence length k",
+    "Group size G — typical range 4-64, tradeoff between variance and compute",
+    "Reference policy update cadence for GRPO KL penalty",
+    "Reward shaping / partial credit for near-sequence completions (optional)",
+    "Replica exchange with GRPO integration details"
+  ]
+}

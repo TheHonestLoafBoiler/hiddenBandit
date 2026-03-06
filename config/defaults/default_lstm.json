@@ -1,0 +1,36 @@
+{
+  "bandit": {
+    "n_arms": 10,
+    "sequence": [2, 6, 1, 9],
+    "bonus": 100.0,
+    "default_rewards": {"0": 0.5}
+  },
+  "agent": {
+    "policy": {
+      "type": "lstm",
+      "embed_dim": 16,
+      "hidden_dim": 32
+    },
+    "grpo": {
+      "clip_epsilon": 0.2,
+      "kl_coeff": 0.01,
+      "update_ref_every": 10
+    },
+    "lr": 0.001
+  },
+  "switching": {
+    "enabled": false
+  },
+  "replicas": {
+    "enabled": false
+  },
+  "experiment": {
+    "n_steps": 1000,
+    "group_size": 16,
+    "trajectory_length": 50,
+    "seed": 42,
+    "log_interval": 100,
+    "checkpoint_interval": 500,
+    "output_dir": "runs/default_lstm"
+  }
+}

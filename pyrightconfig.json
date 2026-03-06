@@ -1,0 +1,13 @@
+{
+  "root": ".",
+  "extraPaths": [
+    ".",
+    "c:\\Users\\TheHonestLoaf\\Desktop\\GradResearch\\hiddenBandit"
+  ],
+  "pythonVersion": "3.10",
+  "typeCheckingMode": "basic",
+  "reportMissingImports": true,
+  "reportMissingTypeStubs": false,
+  "venvPath": "c:\\Users\\TheHonestLoaf\\miniconda3\\envs",
+  "venv": "loaf"
+}

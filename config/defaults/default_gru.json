@@ -1,0 +1,42 @@
+{
+  "bandit": {
+    "n_arms": 10,
+    "sequence": [2, 6, 1, 9],
+    "bonus": 100.0,
+    "default_rewards": {"0": 0.5}
+  },
+  "agent": {
+    "policy": {
+      "type": "gru",
+      "embed_dim": 16,
+      "hidden_dim": 32
+    },
+    "grpo": {
+      "clip_epsilon": 0.2,
+      "kl_coeff": 0.01,
+      "update_ref_every": 10
+    },
+    "lr": 0.001
+  },
+  "switching": {
+    "enabled": false,
+    "type": "constant",
+    "cost": 0.1
+  },
+  "replicas": {
+    "enabled": false,
+    "n_replicas": 4,
+    "temperatures": [0.5, 1.0, 2.0, 5.0],
+    "exchange_interval": 10,
+    "max_is_weight": 10.0
+  },
+  "experiment": {
+    "n_steps": 1000,
+    "group_size": 16,
+    "trajectory_length": 50,
+    "seed": 42,
+    "log_interval": 100,
+    "checkpoint_interval": 500,
+    "output_dir": "runs/default_gru"
+  }
+}
