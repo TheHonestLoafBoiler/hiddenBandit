@@ -192,9 +192,9 @@ Covers: bandit mechanics, policy network shapes/interfaces, GRPO advantage norma
 
 This is an **algorithmic validation environment**. The hypothesis:
 
-> Standard GRPO will converge to the greedy arm and never discover the hidden sequence. Enhanced GRPO with switching functions and importance sampling replicas *should* be able to find it.
+> Standard GRPO will converge to the greedy arm and never discover the hidden sequence. 
 
-If the enhanced algorithm can find a needle in a 10-armed bandit, it has a shot at finding structure in real sequence models. If it can't — back to the whiteboard.
+If an enhanced algorithm can find a needle in a 10-armed bandit, it has a shot at finding structure in real sequence models. If it can't — back to the whiteboard.
 
 ---
 
